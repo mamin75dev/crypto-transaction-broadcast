@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AutoWrapper" Version="1.1.0" />
+        <PackageReference Include="AutoWrapper.Core" Version="4.5.0" />
+        <PackageReference Include="CryptoAPIs" Version="1.7.0" />
+        <PackageReference Include="JsonSubTypes" Version="2.0.1" />
+        <PackageReference Include="NBitcoin" Version="7.0.25" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Particl.NBitcoin" Version="4.1.1.86" />
+        <PackageReference Include="Particl.NBitcoin.Altcoins" Version="1.0.1.38" />
+        <PackageReference Include="Polly" Version="7.2.3" />
+        <PackageReference Include="RestSharp" Version="106.13.0" />
+        <PackageReference Include="RestSharp.Newtonsoft.Json" Version="1.5.1" />
+        <PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="106.13.0" />
+        <PackageReference Include="Ripple.NetCore" Version="1.0.6" />
+        <PackageReference Include="RippleCS" Version="1.0.4" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+        <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+        <PackageReference Include="xrpl.c" Version="1.0.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="CryptoAPIs, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+        <HintPath>bin\Debug\net6.0\CryptoAPIs.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+</Project>
