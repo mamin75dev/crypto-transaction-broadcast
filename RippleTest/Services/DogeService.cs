@@ -1,8 +1,5 @@
-using System.Runtime.Intrinsics.Arm;
-using System.Security.Cryptography;
 using NBitcoin;
 using NBitcoin.Crypto;
-using Org.BouncyCastle.Ocsp;
 using RippleTest.Broadcast;
 using RippleTest.Dto;
 using RippleTest.Providers;
@@ -10,7 +7,7 @@ using RippleTest.Utils;
 
 namespace RippleTest;
 
-public class DogeService: IDogeService
+public class DogeService : IDogeService
 {
     private readonly ICryptoApiService _cryptoService;
     private readonly TransactionDictionary _dictionary;
@@ -26,11 +23,13 @@ public class DogeService: IDogeService
         var dogeSenderPublicKey = new PubKey(request.SenderPublicKey);
         var destination = BitcoinAddress.Create(request.ReceiverAddress, network);
         var sender = dogeSenderPublicKey.GetAddress(scriptType, network).ToString();
-        
+
         var senderChangeAddress = BitcoinAddress.Create(sender, network);
-        
-        var unspentCoins = await _cryptoService.GetUnspentCoins(sender, request.SenderPublicKey);
-        List<Coin> spendingCoins = GetSpendingCoins(request, unspentCoins);
+
+        var result = await _cryptoService.GetUnspentCoins(sender, request.SenderPublicKey);
+
+
+        var spendingCoins = await _cryptoService.GetSpendingCoins(sender, request.AmountInDoge);
 
         var responseDto = new UnspentResponseDto
         {
@@ -39,8 +38,8 @@ public class DogeService: IDogeService
             VerificationHash = HashGenerator.DoubleSha256($"{request.ReceiverAddress}{request.AmountInDoge}")
         };
 
-        if (unspentCoins.Count == 0) return responseDto;
-        
+        if (spendingCoins.Count == 0) return responseDto;
+
         var unsignedTrx = network
             .CreateTransactionBuilder()
             .AddCoins(spendingCoins)
@@ -61,11 +60,11 @@ public class DogeService: IDogeService
             var reverseHash = Convert.ToHexString(signHash.ToBytes(true));
 
             _dictionary.AddTransactionCachedData(request.SenderPublicKey, reverseHash, spendingCoins, unsignedTrx, rebuild, i, sender, request.ReceiverAddress, request.AmountInDoge, "doge", "doge");
-            
+
             responseDto.TransactionHash = reverseHash;
             return responseDto;
         }
-        
+
         // return unsignedTrx.ToHex();
 
         return responseDto;
@@ -81,41 +80,36 @@ public class DogeService: IDogeService
                 // _dictionary.RemoveFromDictionary($"{request.Hash}");
                 return new SpendResponseDto(true, errors: "Transaction does not exists!!");
             }
-        
+
             AddSignatureToTransaction(request, cachedData);
 
-
-        for (int i = cachedData.Index + 1; i < cachedData.UnspentCoins?.Count; i++)
-                {
-                    var indexedIn = cachedData.UnsignedTransaction?.Inputs.FindIndexedInput(cachedData.UnspentCoins[i].Outpoint);
-                    if (indexedIn == null) continue;
-                    string? reverseHash;
-                    var signHash = indexedIn.GetSignatureHash(cachedData.UnspentCoins[i], SigHash.All);
-                    reverseHash = Convert.ToHexString(signHash.ToBytes(true));
-                    _dictionary.AddTransactionCachedData(cachedData.PublicKey, reverseHash, cachedData.UnspentCoins, cachedData.UnsignedTransaction, cachedData.Rebuild, i, cachedData.From, cachedData.To, cachedData.Value, cachedData.Asset, cachedData.Net);
-                    // _dictionary.RemoveFromDictionary($"{request.Hash}");
-                    return new SpendResponseDto(false, reverseHash);
-                }
-
-                var spendResponseDto = await VerifyAndBroadcastTransaction(cachedData, cachedData.UnsignedTransaction);
-                if (!string.IsNullOrEmpty(spendResponseDto.Errors))
-                {
-                    return spendResponseDto;
-                }
-                // await _pendingTransactionManager.AddTransactionAsync(cachedData.From, cachedData.To,
-                //     spendResponseDto.Hash, cachedData.Asset, cachedData.Net,
-                //     cachedData.NetType, cachedData.Value, DateTime.Now.ToUnixTimestamp());
-
-                // _dictionary.RemoveFromDictionary($"{request.Hash}");
-                return spendResponseDto;
-            }
-            catch (Exception ex)
+            for (int i = cachedData.Index + 1; i < cachedData.UnspentCoins?.Count; i++)
             {
-                _dictionary.RemoveFromDictionary($"{request.Hash}");
-                return new SpendResponseDto(true, errors: ex.Message);
+                var indexedIn = cachedData.UnsignedTransaction?.Inputs.FindIndexedInput(cachedData.UnspentCoins[i].Outpoint);
+                if (indexedIn == null) continue;
+                string? reverseHash;
+                var signHash = indexedIn.GetSignatureHash(cachedData.UnspentCoins[i], SigHash.All);
+                reverseHash = Convert.ToHexString(signHash.ToBytes(true));
+                _dictionary.AddTransactionCachedData(cachedData.PublicKey, reverseHash, cachedData.UnspentCoins, cachedData.UnsignedTransaction, cachedData.Rebuild, i, cachedData.From, cachedData.To, cachedData.Value, cachedData.Asset, cachedData.Net);
+                // _dictionary.RemoveFromDictionary($"{request.Hash}");
+                return new SpendResponseDto(false, reverseHash);
             }
-        
-        
+            var spendResponseDto = await VerifyAndBroadcastTransaction(cachedData, cachedData.UnsignedTransaction);
+            /*if (!string.IsNullOrEmpty(spendResponseDto.Errors))
+            {
+                return spendResponseDto;
+            }*/
+            // await _pendingTransactionManager.AddTransactionAsync(cachedData.From, cachedData.To,
+            //     spendResponseDto.Hash, cachedData.Asset, cachedData.Net,
+            //     cachedData.NetType, cachedData.Value, DateTime.Now.ToUnixTimestamp());
+            // _dictionary.RemoveFromDictionary($"{request.Hash}");
+            return spendResponseDto;
+        }
+        catch (Exception ex)
+        {
+            _dictionary.RemoveFromDictionary($"{request.Hash}");
+            return new SpendResponseDto(true, errors: ex.Message);
+        }
     }
 
     private async Task<SpendResponseDto> VerifyAndBroadcastTransaction(TransactionCachedData cachedData, Transaction? unsignedTransaction)
@@ -123,32 +117,15 @@ public class DogeService: IDogeService
         var signedTx = cachedData.Rebuild.SignTransaction(unsignedTransaction);
 
         var verify = cachedData.Rebuild.Verify(signedTx);
-        // if (!verify)
-        // {
-        //     return new SpendResponseDto(true, errors: "transaction not verified");
-        // }
+        if (!verify)
+        {
+            return new SpendResponseDto(true, errors: "transaction not verified");
+        }
 
         return new SpendResponseDto(true, signedTx.ToHex(), "");
     }
 
-    protected List<Coin> GetSpendingCoins(UnspentRequestDto dto, List<Coin> unspentCoins)
-    {
-        var sortedUnspentCoins = unspentCoins.OrderByDescending(a => a.Amount).ToList();
-        if (!sortedUnspentCoins.Any()) return null;
-        var spendingCoins = new List<Coin>();
-        var unspents = unspentCoins.ToArray();
-        var sum = 0L;
-        var i = 0;
-        do
-        {
-            var coin = sortedUnspentCoins[i];
-            sum += coin.Amount;
-            spendingCoins.Add(coin);
-            i++;
-        } while (i < sortedUnspentCoins.Count && sum <= dto.AmountInDoge);
 
-        return spendingCoins;
-    }
 
     protected void AddSignatureToTransaction(SpendRequestDto dto, TransactionCachedData cachedData)
     {

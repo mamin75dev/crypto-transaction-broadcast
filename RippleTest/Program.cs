@@ -16,6 +16,9 @@ builder.Services.AddSingleton<IDogeService, DogeService>();
 builder.Services.AddSingleton<ICryptoApiService, CryptoApiService>();
 // builder.Services.AddSingleton<RippleBinaryObject>();
 
+builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

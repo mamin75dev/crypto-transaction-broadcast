@@ -9,7 +9,6 @@
     <ItemGroup>
         <PackageReference Include="AutoWrapper" Version="1.1.0" />
         <PackageReference Include="AutoWrapper.Core" Version="4.5.0" />
-        <PackageReference Include="CryptoAPIs" Version="1.7.0" />
         <PackageReference Include="JsonSubTypes" Version="2.0.1" />
         <PackageReference Include="NBitcoin" Version="7.0.25" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
